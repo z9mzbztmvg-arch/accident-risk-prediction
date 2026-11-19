@@ -1,0 +1,110 @@
+[
+  {
+    "feature": "road_density",
+    "importance": 305.0
+  },
+  {
+    "feature": "precipitation",
+    "importance": 251.0
+  },
+  {
+    "feature": "roll_acc_7",
+    "importance": 225.0
+  },
+  {
+    "feature": "intersection_count",
+    "importance": 221.0
+  },
+  {
+    "feature": "centrality",
+    "importance": 174.0
+  },
+  {
+    "feature": "temperature",
+    "importance": 169.0
+  },
+  {
+    "feature": "is_snow",
+    "importance": 164.0
+  },
+  {
+    "feature": "visibility",
+    "importance": 158.0
+  },
+  {
+    "feature": "dist_to_center",
+    "importance": 156.0
+  },
+  {
+    "feature": "is_school_zone",
+    "importance": 142.0
+  },
+  {
+    "feature": "poi_density",
+    "importance": 141.0
+  },
+  {
+    "feature": "day_of_week",
+    "importance": 126.0
+  },
+  {
+    "feature": "doy_cos",
+    "importance": 100.0
+  },
+  {
+    "feature": "traffic_density",
+    "importance": 96.0
+  },
+  {
+    "feature": "wind_speed",
+    "importance": 84.0
+  },
+  {
+    "feature": "doy_sin",
+    "importance": 66.0
+  },
+  {
+    "feature": "is_fog",
+    "importance": 43.0
+  },
+  {
+    "feature": "speed_limit",
+    "importance": 40.0
+  },
+  {
+    "feature": "neigh_acc_1",
+    "importance": 32.0
+  },
+  {
+    "feature": "is_winter",
+    "importance": 29.0
+  },
+  {
+    "feature": "is_holiday",
+    "importance": 20.0
+  },
+  {
+    "feature": "avg_lanes",
+    "importance": 17.0
+  },
+  {
+    "feature": "month",
+    "importance": 14.0
+  },
+  {
+    "feature": "is_weekend",
+    "importance": 8.0
+  },
+  {
+    "feature": "lag_acc_1",
+    "importance": 7.0
+  },
+  {
+    "feature": "is_vacation",
+    "importance": 7.0
+  },
+  {
+    "feature": "pavement_code",
+    "importance": 5.0
+  }
+]
