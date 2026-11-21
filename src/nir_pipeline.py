@@ -275,6 +275,33 @@ def generate_dataset() -> pd.DataFrame:
 # --------------------------------------------------------------------------- #
 # 3. Конструирование признаков
 # --------------------------------------------------------------------------- #
+def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    """Проверка диапазонов, отбрасывание пропусков в целевой переменной и
+    заполнение температуры медианой по календарному месяцу."""
+    df = df.copy()
+    bounds = {
+        "precipitation": (0.0, None),
+        "visibility": (1e-9, None),
+        "wind_speed": (0.0, None),
+        "temperature": (-60.0, 60.0),
+    }
+    for column, (lower, upper) in bounds.items():
+        if column not in df:
+            continue
+        if lower is not None:
+            df.loc[df[column] < lower, column] = np.nan
+        if upper is not None:
+            df.loc[df[column] > upper, column] = np.nan
+    df = df.dropna(subset=["target"]).copy()
+    month = df["date"].dt.month
+    for column in ["temperature", "precipitation", "visibility", "wind_speed"]:
+        if column in df and df[column].isna().any():
+            median = df.groupby(month)[column].transform("median")
+            global_median = float(df[column].median())
+            df[column] = df[column].fillna(median).fillna(global_median)
+    return df
+
+
 def temporal_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     d = df["date"].dt
@@ -653,6 +680,7 @@ def main():
 
     print("Генерация набора данных ...")
     df = generate_dataset()
+    df = clean_dataset(df)
     df = build_features(df)
     pos = float(df["target"].mean())
     print(f"Строк: {len(df):,}; доля положительных: {pos:.4f}; "
@@ -695,6 +723,30 @@ def main():
     fig_importance(models["Градиентный бустинг LightGBM"], FEATURES)
     fig_risk_map(te, results["Градиентный бустинг LightGBM"]["_score"])
     fig_optuna(os.path.join(OUT_DIR, "..", "optuna_history.json"))
+
+    # Сохранение модели и помесячных карт риска для сервиса прогнозирования.
+    import joblib
+    root = os.path.dirname(OUT_DIR)
+    best_model = models["Градиентный бустинг LightGBM"]
+    joblib.dump({"model": best_model, "features": FEATURES},
+                os.path.join(root, "model.joblib"))
+
+    grid = GRID
+    scored = te[["cell_i", "cell_j", "date"]].copy()
+    scored["risk"] = results["Градиентный бустинг LightGBM"]["_score"]
+    scored["period"] = scored["date"].dt.strftime("%Y-%m")
+
+    def to_grid(frame: pd.DataFrame) -> list[list[float]]:
+        values = np.full((grid, grid), np.nan)
+        for (i, j), v in frame.groupby(["cell_i", "cell_j"])["risk"].mean().items():
+            values[int(i), int(j)] = float(v)
+        return values.tolist()
+
+    risk_grids = {"all": to_grid(scored)}
+    for period, part in scored.groupby("period"):
+        risk_grids[str(period)] = to_grid(part)
+    with open(os.path.join(root, "risk_grids.json"), "w", encoding="utf-8") as f:
+        json.dump(risk_grids, f, ensure_ascii=False)
 
     summary = {
         "n_rows": int(len(df)),

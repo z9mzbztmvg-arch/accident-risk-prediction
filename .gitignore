@@ -6,3 +6,5 @@ venv/
 .ipynb_checkpoints/
 .DS_Store
 Thumbs.db
+model.joblib
+risk_grids.json
