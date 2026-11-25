@@ -16,9 +16,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-# Границы условного мегаполиса (Волгоград) для привязки регулярной сетки
-LAT_MIN, LAT_MAX = 48.65, 48.74
-LON_MIN, LON_MAX = 44.45, 44.56
+# Границы Москвы, для которых построена регулярная сетка
+LAT_MIN, LAT_MAX = 55.57, 55.92
+LON_MIN, LON_MAX = 37.35, 37.90
 GRID = 30
 MODEL_PATH = os.environ.get("NIR_MODEL", "model.joblib")
 RISK_PATH = os.environ.get("NIR_RISK", "risk_grids.json")
@@ -79,29 +79,37 @@ def predict(item: Observation) -> dict:
 
 
 def render_risk_map(risk_grid: np.ndarray) -> folium.Map:
-    """Строит интерактивную карту риска по регулярной сетке ячеек."""
+    """Строит интерактивную карту риска: ячейки сетки задаются полигонами
+    Shapely и объединяются в GeoDataFrame GeoPandas."""
+    import geopandas as gpd
+    from shapely.geometry import box
+
     risk_grid = np.asarray(risk_grid, dtype=float)
     lat_step = (LAT_MAX - LAT_MIN) / GRID
     lon_step = (LON_MAX - LON_MIN) / GRID
-    fmap = folium.Map(location=[(LAT_MIN + LAT_MAX) / 2, (LON_MIN + LON_MAX) / 2],
-                      zoom_start=13, tiles="OpenStreetMap")
+    records, geometries = [], []
     for i in range(GRID):
         for j in range(GRID):
             value = float(risk_grid[i, j])
             if not np.isfinite(value):
                 continue
-            bounds = [
-                [LAT_MIN + i * lat_step, LON_MIN + j * lon_step],
-                [LAT_MIN + (i + 1) * lat_step, LON_MIN + (j + 1) * lon_step],
-            ]
-            folium.Rectangle(
-                bounds=bounds,
-                color=None,
-                fill=True,
-                fill_color="#d73027",
-                fill_opacity=min(0.9, max(0.0, value)),
-                tooltip=f"Индекс ячейки: {i}, {j}; риск: {value:.2f}",
-            ).add_to(fmap)
+            south = LAT_MIN + i * lat_step
+            west = LON_MIN + j * lon_step
+            geometries.append(box(west, south, west + lon_step, south + lat_step))
+            records.append({"cell_i": i, "cell_j": j, "risk": round(value, 3)})
+    cells = gpd.GeoDataFrame(records, geometry=geometries, crs="EPSG:4326")
+    fmap = folium.Map(location=[(LAT_MIN + LAT_MAX) / 2, (LON_MIN + LON_MAX) / 2],
+                      zoom_start=11, tiles="OpenStreetMap")
+    folium.GeoJson(
+        cells.__geo_interface__,
+        style_function=lambda feature: {
+            "fillColor": "#d73027",
+            "fillOpacity": min(0.9, max(0.0, feature["properties"]["risk"])),
+            "color": None,
+        },
+        tooltip=folium.GeoJsonTooltip(fields=["cell_i", "cell_j", "risk"],
+                                      aliases=["Строка", "Столбец", "Риск"]),
+    ).add_to(fmap)
     return fmap
 
 

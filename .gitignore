@@ -8,3 +8,4 @@ venv/
 Thumbs.db
 model.joblib
 risk_grids.json
+data/

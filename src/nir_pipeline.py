@@ -33,35 +33,22 @@ import matplotlib.pyplot as plt
 
 from matplotlib.ticker import FuncFormatter
 import matplotlib.font_manager as font_manager
-import shutil
-import subprocess
 
 
 def _register_document_font() -> str:
-    """Регистрирует в matplotlib тот же шрифт, что используется в тексте
-    документа (Tempora из пакета LaTeX). Шрифт ищется средствами TeX Live
-    (kpsewhich). Если он недоступен, берётся Times New Roman, затем DejaVu."""
-    names = ("Tempora-Regular.otf", "Tempora-Bold.otf",
-             "Tempora-Italic.otf", "Tempora-BoldItalic.otf")
-    kpsewhich = shutil.which("kpsewhich")
-    added = False
-    for fn in names:
-        path = None
-        if kpsewhich:
-            try:
-                out = subprocess.run([kpsewhich, fn], capture_output=True,
-                                     text=True, timeout=20)
-                cand = out.stdout.strip()
-                if cand and os.path.exists(cand):
-                    path = cand
-            except Exception:
-                path = None
-        if path:
-            font_manager.fontManager.addfont(path)
-            added = True
-    if added:
-        return "Tempora"
-    return "Times New Roman"
+    """Выбирает гарнитуру для графиков с поддержкой кириллицы.
+
+    Шрифт Tempora из TeX Live содержит кириллицу, но его метрики в
+    matplotlib считаются неверно: подписи получают огромные габариты,
+    из-за чего поле рисунка раздувается, а буквы выводятся чёрными
+    кляксами. Поэтому используется Times New Roman, который близок к
+    гарнитуре документа; при его отсутствии берётся DejaVu Serif.
+    """
+    available = {f.name for f in font_manager.fontManager.ttflist}
+    for candidate in ("Times New Roman", "Liberation Serif", "DejaVu Serif"):
+        if candidate in available:
+            return candidate
+    return "DejaVu Serif"
 
 
 # Гарнитура графиков совпадает с основным текстом документа
@@ -141,10 +128,18 @@ def _legend_below(fig, ax, ncol: int = 1, gap: float = 0.10):
 
 
 def _save(fig, stem: str) -> None:
-    """Сохранение рисунка в PDF и PNG без обрезки подписей."""
+    """Сохранение рисунка в PDF и PNG без обрезки подписей.
+
+    Габаритный прямоугольник вычисляется по уже отрисованному полотну и
+    расширяется на небольшой запас: у повёрнутых подписей оси фактическая
+    ширина штрихов может выходить за пределы, которые возвращает
+    компоновщик, и тогда крайние буквы обрезаются.
+    """
+    fig.canvas.draw()
+    bbox = fig.get_tightbbox(fig.canvas.get_renderer()).padded(0.08)
     for ext in ("pdf", "png"):
         fig.savefig(os.path.join(OUT_DIR, f"{stem}.{ext}"),
-                    bbox_inches="tight", pad_inches=0.03)
+                    bbox_inches=bbox, pad_inches=0)
     plt.close(fig)
 
 
@@ -374,13 +369,18 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 # 4. Обучение моделей
 # --------------------------------------------------------------------------- #
 def load_splits(df: pd.DataFrame):
-    tr = df[df["date"] < "2024-10-01"]
-    va = df[(df["date"] >= "2024-10-01") & (df["date"] < "2025-01-01")]
-    te = df[df["date"] >= "2025-01-01"]
+    """Временное разбиение: тест -- последний календарный год, валидация --
+    четвёртый квартал предыдущего года, обучение -- всё, что раньше."""
+    last_year = int(df["date"].dt.year.max())
+    test_start = f"{last_year}-01-01"
+    val_start = f"{last_year - 1}-10-01"
+    tr = df[df["date"] < val_start]
+    va = df[(df["date"] >= val_start) & (df["date"] < test_start)]
+    te = df[df["date"] >= test_start]
     return tr, va, te
 
 
-def train_models(tr, va, te, tune: bool = True):
+def train_models(tr, va, te, features, tune: bool = True):
     from sklearn.linear_model import LogisticRegression
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.preprocessing import StandardScaler
@@ -388,9 +388,9 @@ def train_models(tr, va, te, tune: bool = True):
     from xgboost import XGBClassifier
     from lightgbm import LGBMClassifier
 
-    Xtr, ytr = tr[FEATURES].to_numpy(), tr["target"].to_numpy()
-    Xva, yva = va[FEATURES].to_numpy(), va["target"].to_numpy()
-    Xte, yte = te[FEATURES].to_numpy(), te["target"].to_numpy()
+    Xtr, ytr = tr[features].to_numpy(), tr["target"].to_numpy()
+    Xva, yva = va[features].to_numpy(), va["target"].to_numpy()
+    Xte, yte = te[features].to_numpy(), te["target"].to_numpy()
     spw = float((ytr == 0).sum()) / float((ytr == 1).sum())
 
     models = {}
@@ -407,7 +407,7 @@ def train_models(tr, va, te, tune: bool = True):
         import optuna
         optuna.logging.set_verbosity(optuna.logging.WARNING)
         sub = tr.sample(n=min(200_000, len(tr)), random_state=RANDOM_STATE)
-        Xs, ys = sub[FEATURES].to_numpy(), sub["target"].to_numpy()
+        Xs, ys = sub[features].to_numpy(), sub["target"].to_numpy()
         Xv, yv = Xva, yva
 
         def objective(trial):
@@ -509,6 +509,7 @@ def fig_temporal(df):
     ax[0].set_xlabel("Месяц")
     ax[0].set_ylabel("Число ДТП")
     ax[0].set_xticks(range(1, 13))
+    ax[0].tick_params(axis="x", labelsize=10)
     ax[0].yaxis.set_major_formatter(fmt)
     d = df.groupby("day_of_week")["accident_count"].sum()
     ax[1].bar(range(1, 8), d.values, color="#DD8452", edgecolor="black", linewidth=0.6)
@@ -551,7 +552,14 @@ def fig_pr(results, prc):
     ax.set_xlabel("Полнота")
     ax.set_ylabel("Точность")
     ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1.02)
+    # При доле положительных наблюдений около 2 % точность на всём диапазоне
+    # остаётся низкой, поэтому верхняя граница подстраивается под данные:
+    # иначе кривые сливаются у нижнего края и различия не видны. Первая точка
+    # каждой кривой соответствует порогу выше максимума и равна единице, её
+    # при выборе границы не учитываем.
+    tops = [float(np.max(prec[rec > 0.01]))
+            for prec, rec, _ in prc.values() if np.any(rec > 0.01)]
+    ax.set_ylim(0, min(1.0, max(tops) * 1.15))
     _black_axes(ax)
     fig.tight_layout()
     # Легенда вынесена под поле графика, чтобы не перекрывать кривые
@@ -634,10 +642,16 @@ def fig_risk_map(te, best_scores):
         risk[i, j] = v
     fig, ax = plt.subplots(figsize=(LINE_WIDTH_IN, 5.8))
     im = ax.imshow(risk.T, origin="lower", cmap="YlOrRd")
-    # Уровень изолинии выбирается по данным, чтобы контур всегда был замкнутым
+    # Изолиния строится по сглаженному полю: оценки отдельных ячеек шумны,
+    # и без сглаживания уровень 90-го процентиля распадается на десятки
+    # мелких замкнутых контуров, которые ничего не обозначают.
     if np.isfinite(risk).any() and np.nanmax(risk) > np.nanmin(risk):
-        level = float(np.nanpercentile(risk, 90))
-        ax.contour(risk.T, levels=[level], colors="black", linewidths=1.1)
+        from numpy.lib.stride_tricks import sliding_window_view
+        padded = np.pad(np.nan_to_num(risk, nan=float(np.nanmean(risk))),
+                        2, mode="edge")
+        smooth = sliding_window_view(padded, (5, 5)).mean(axis=(-1, -2))
+        level = float(np.percentile(smooth, 90))
+        ax.contour(smooth.T, levels=[level], colors="black", linewidths=1.1)
     for k in range(grid + 1):
         ax.axhline(k - 0.5, color="black", linewidth=0.15, alpha=0.2)
         ax.axvline(k - 0.5, color="black", linewidth=0.15, alpha=0.2)
@@ -675,13 +689,21 @@ def fig_optuna(path):
 # --------------------------------------------------------------------------- #
 # 7. Полный конвейер
 # --------------------------------------------------------------------------- #
-def main():
+def main(synthetic: bool = False):
     from sklearn.metrics import roc_curve, precision_recall_curve
 
-    print("Генерация набора данных ...")
-    df = generate_dataset()
-    df = clean_dataset(df)
-    df = build_features(df)
+    if synthetic:
+        print("Генерация синтетического стенда ...")
+        df = generate_dataset()
+        df = clean_dataset(df)
+        df = build_features(df)
+        features = FEATURES
+    else:
+        print("Загрузка реальных открытых данных ...")
+        from real_data import build_dataset, FEATURES as REAL_FEATURES
+        df = build_dataset()
+        df = clean_dataset(df)
+        features = REAL_FEATURES
     pos = float(df["target"].mean())
     print(f"Строк: {len(df):,}; доля положительных: {pos:.4f}; "
           f"всего ДТП: {int(df['accident_count'].sum()):,}")
@@ -692,7 +714,7 @@ def main():
     fig_temporal(df)
 
     print("Обучение моделей и подбор гиперпараметров ...")
-    models, splits, best_params, spw = train_models(tr, va, te, tune=True)
+    models, splits, best_params, spw = train_models(tr, va, te, features, tune=True)
     Xtr, ytr, Xva, yva, Xte, yte = splits
 
     results, curves, prc = {}, {}, {}
@@ -720,7 +742,7 @@ def main():
     fig_pr({k: v for k, v in results.items() if k in prc}, prc)
     fig_confusion({k: v for k, v in results.items()})
     fig_metrics({k: v for k, v in results.items()})
-    fig_importance(models["Градиентный бустинг LightGBM"], FEATURES)
+    fig_importance(models["Градиентный бустинг LightGBM"], features)
     fig_risk_map(te, results["Градиентный бустинг LightGBM"]["_score"])
     fig_optuna(os.path.join(OUT_DIR, "..", "optuna_history.json"))
 
@@ -728,7 +750,7 @@ def main():
     import joblib
     root = os.path.dirname(OUT_DIR)
     best_model = models["Градиентный бустинг LightGBM"]
-    joblib.dump({"model": best_model, "features": FEATURES},
+    joblib.dump({"model": best_model, "features": features},
                 os.path.join(root, "model.joblib"))
 
     grid = GRID
@@ -753,7 +775,7 @@ def main():
         "positive_rate": round(pos, 4),
         "n_accidents": int(df["accident_count"].sum()),
         "n_cells": int(df.groupby(["cell_i", "cell_j"]).ngroups),
-        "period": [START, END],
+        "period": [str(df["date"].min().date()), str(df["date"].max().date())],
         "splits": {"train": int(len(tr)), "val": int(len(va)), "test": int(len(te))},
         "scale_pos_weight": round(spw, 2),
         "best_params": best_params,
