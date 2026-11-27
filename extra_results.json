@@ -1,0 +1,300 @@
+{
+  "ablation": {
+    "infra": {
+      "precision": 0.05689840851980376,
+      "recall": 0.3682715890021944,
+      "f1": 0.09856794900585604,
+      "roc_auc": 0.7434499338566816,
+      "pr_auc": 0.05251455715267273,
+      "threshold": 0.64,
+      "n_features": 8
+    },
+    "infra_cal": {
+      "precision": 0.06928991795180206,
+      "recall": 0.20820962953401317,
+      "f1": 0.1039773093534455,
+      "roc_auc": 0.7500111946132866,
+      "pr_auc": 0.05678344559878697,
+      "threshold": 0.68,
+      "n_features": 15
+    },
+    "infra_cal_weather": {
+      "precision": 0.0669669871579372,
+      "recall": 0.25713179295211047,
+      "f1": 0.10625983516923158,
+      "roc_auc": 0.7499564129327776,
+      "pr_auc": 0.0572113816881788,
+      "threshold": 0.67,
+      "n_features": 21
+    },
+    "all": {
+      "precision": 0.06758686339838173,
+      "recall": 0.2566154640506002,
+      "f1": 0.10699389144533247,
+      "roc_auc": 0.7504160091903537,
+      "pr_auc": 0.05704886660820473,
+      "threshold": 0.67,
+      "n_features": 24
+    }
+  },
+  "budgets": {
+    "1pct": {
+      "logreg": {
+        "alerts": 3294,
+        "precision": 0.07073466909532483,
+        "recall": 0.030076158512972764
+      },
+      "rf": {
+        "alerts": 3294,
+        "precision": 0.08348512446873102,
+        "recall": 0.035497611978830515
+      },
+      "lightgbm": {
+        "alerts": 3294,
+        "precision": 0.09198542805100182,
+        "recall": 0.03911191428940235
+      },
+      "xgboost": {
+        "alerts": 3294,
+        "precision": 0.09319975713418337,
+        "recall": 0.03962824319091261
+      },
+      "statistical": {
+        "alerts": 4032,
+        "precision": 0.06721230158730158,
+        "recall": 0.034981283077320256
+      }
+    },
+    "5pct": {
+      "logreg": {
+        "alerts": 16470,
+        "precision": 0.06308439587128112,
+        "recall": 0.13411643216729058
+      },
+      "rf": {
+        "alerts": 16470,
+        "precision": 0.06830601092896176,
+        "recall": 0.1452175035497612
+      },
+      "lightgbm": {
+        "alerts": 16470,
+        "precision": 0.07352762598664238,
+        "recall": 0.15631857493223184
+      },
+      "xgboost": {
+        "alerts": 16470,
+        "precision": 0.07261687917425623,
+        "recall": 0.15438234155156835
+      },
+      "statistical": {
+        "alerts": 17643,
+        "precision": 0.05894689111829054,
+        "recall": 0.13424551439266813
+      }
+    },
+    "10pct": {
+      "logreg": {
+        "alerts": 32940,
+        "precision": 0.056466302367941715,
+        "recall": 0.24009293920227184
+      },
+      "rf": {
+        "alerts": 32940,
+        "precision": 0.060261080752884034,
+        "recall": 0.25622821737446755
+      },
+      "lightgbm": {
+        "alerts": 32940,
+        "precision": 0.06615057680631452,
+        "recall": 0.28127016909771524
+      },
+      "xgboost": {
+        "alerts": 32940,
+        "precision": 0.06314511232544019,
+        "recall": 0.26849102878533626
+      },
+      "statistical": {
+        "alerts": 38489,
+        "precision": 0.0527683234170802,
+        "recall": 0.2621659997418356
+      }
+    }
+  },
+  "importance": [
+    {
+      "feature": "intersection_count",
+      "gain": 2270115.5471343994,
+      "split": 209
+    },
+    {
+      "feature": "poi_density",
+      "gain": 1170150.0733184814,
+      "split": 242
+    },
+    {
+      "feature": "dist_to_center",
+      "gain": 648878.0721588135,
+      "split": 312
+    },
+    {
+      "feature": "avg_lanes",
+      "gain": 646749.2286529541,
+      "split": 353
+    },
+    {
+      "feature": "road_density",
+      "gain": 451214.3596496582,
+      "split": 313
+    },
+    {
+      "feature": "speed_limit",
+      "gain": 393879.30613708496,
+      "split": 291
+    },
+    {
+      "feature": "is_school_zone",
+      "gain": 77058.93583679199,
+      "split": 9
+    },
+    {
+      "feature": "temperature",
+      "gain": 60890.20053100586,
+      "split": 77
+    },
+    {
+      "feature": "doy_cos",
+      "gain": 43881.42692565918,
+      "split": 93
+    },
+    {
+      "feature": "day_of_week",
+      "gain": 26915.526824951172,
+      "split": 45
+    },
+    {
+      "feature": "cloud_cover",
+      "gain": 25828.302001953125,
+      "split": 57
+    },
+    {
+      "feature": "roll_acc_7",
+      "gain": 23291.421966552734,
+      "split": 29
+    },
+    {
+      "feature": "doy_sin",
+      "gain": 21289.376953125,
+      "split": 57
+    },
+    {
+      "feature": "is_holiday",
+      "gain": 17306.50799560547,
+      "split": 30
+    },
+    {
+      "feature": "wind_speed",
+      "gain": 11114.694961547852,
+      "split": 34
+    },
+    {
+      "feature": "precipitation",
+      "gain": 10915.993103027344,
+      "split": 31
+    },
+    {
+      "feature": "month",
+      "gain": 10402.970962524414,
+      "split": 24
+    },
+    {
+      "feature": "snowfall",
+      "gain": 6611.902969360352,
+      "split": 19
+    },
+    {
+      "feature": "pavement_code",
+      "gain": 5637.112976074219,
+      "split": 3
+    },
+    {
+      "feature": "is_weekend",
+      "gain": 4466.517990112305,
+      "split": 12
+    },
+    {
+      "feature": "neigh_acc_1",
+      "gain": 3124.3380584716797,
+      "split": 8
+    },
+    {
+      "feature": "is_winter",
+      "gain": 935.0899963378906,
+      "split": 2
+    },
+    {
+      "feature": "lag_acc_1",
+      "gain": 0.0,
+      "split": 0
+    },
+    {
+      "feature": "is_snow",
+      "gain": 0.0,
+      "split": 0
+    }
+  ],
+  "training_seconds": {
+    "lgb_infra": 1.8,
+    "lgb_infra_cal": 2.2,
+    "lgb_infra_cal_weather": 2.6,
+    "lgb_all": 2.7,
+    "logreg": 1.7,
+    "rf": 46.5,
+    "lightgbm": 2.9,
+    "xgboost": 7.8
+  },
+  "point_metrics": {
+    "logreg": {
+      "precision": 0.05171377029464823,
+      "recall": 0.37743642700400154,
+      "f1": 0.09096423960553127,
+      "roc_auc": 0.7219945903145176,
+      "pr_auc": 0.04863746065608219,
+      "threshold": 0.64
+    },
+    "rf": {
+      "precision": 0.051597459561926635,
+      "recall": 0.48134761843294177,
+      "f1": 0.09320402909345397,
+      "roc_auc": 0.7426843022084909,
+      "pr_auc": 0.05393824877634992,
+      "threshold": 0.49000000000000005
+    },
+    "lightgbm": {
+      "precision": 0.06758686339838173,
+      "recall": 0.2566154640506002,
+      "f1": 0.10699389144533247,
+      "roc_auc": 0.7504160091903537,
+      "pr_auc": 0.05704886660820473,
+      "threshold": 0.67
+    },
+    "xgboost": {
+      "precision": 0.06379358351638152,
+      "recall": 0.2661675487285401,
+      "f1": 0.10291989019216372,
+      "roc_auc": 0.741995201981582,
+      "pr_auc": 0.05597666142103193,
+      "threshold": 0.68
+    },
+    "statistical": {
+      "precision": 0.04908623829344433,
+      "recall": 0.38969923841487025,
+      "f1": 0.0871900766775931,
+      "roc_auc": 0.6808705035551696,
+      "pr_auc": 0.04346771731332767,
+      "threshold": 0.04
+    }
+  },
+  "n_test": 329400,
+  "n_test_positive": 7747,
+  "total_seconds": 75.2
+}
