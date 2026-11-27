@@ -82,6 +82,7 @@ def render_risk_map(risk_grid: np.ndarray) -> folium.Map:
     """Строит интерактивную карту риска: ячейки сетки задаются полигонами
     Shapely и объединяются в GeoDataFrame GeoPandas."""
     import geopandas as gpd
+    from branca.colormap import LinearColormap
     from shapely.geometry import box
 
     risk_grid = np.asarray(risk_grid, dtype=float)
@@ -98,18 +99,35 @@ def render_risk_map(risk_grid: np.ndarray) -> folium.Map:
             geometries.append(box(west, south, west + lon_step, south + lat_step))
             records.append({"cell_i": i, "cell_j": j, "risk": round(value, 3)})
     cells = gpd.GeoDataFrame(records, geometry=geometries, crs="EPSG:4326")
+
+    # Шкала ограничена 5-м и 95-м процентилями: редкие выбросы не делают
+    # всю карту однотонной, а средние значения сохраняют различия.
+    values = cells["risk"].to_numpy()
+    vmin = float(np.percentile(values, 5))
+    vmax = float(np.percentile(values, 95))
+    if vmax <= vmin:
+        vmax = vmin + 1e-6
+    colormap = LinearColormap(
+        ["#ffffb2", "#fecc5c", "#fd8d3c", "#f03b20", "#bd0026"],
+        vmin=vmin, vmax=vmax, caption="Прогнозный риск",
+    )
+
     fmap = folium.Map(location=[(LAT_MIN + LAT_MAX) / 2, (LON_MIN + LON_MAX) / 2],
-                      zoom_start=11, tiles="OpenStreetMap")
+                      zoom_start=11, tiles="OpenStreetMap",
+                      width="100%", height=820)
+
+    def style(feature):
+        value = min(max(feature["properties"]["risk"], vmin), vmax)
+        return {"fillColor": colormap(value), "fillOpacity": 0.65,
+                "color": "#8c2d04", "weight": 0.2}
+
     folium.GeoJson(
         cells.__geo_interface__,
-        style_function=lambda feature: {
-            "fillColor": "#d73027",
-            "fillOpacity": min(0.9, max(0.0, feature["properties"]["risk"])),
-            "color": None,
-        },
+        style_function=style,
         tooltip=folium.GeoJsonTooltip(fields=["cell_i", "cell_j", "risk"],
                                       aliases=["Строка", "Столбец", "Риск"]),
     ).add_to(fmap)
+    colormap.add_to(fmap)
     return fmap
 
 
@@ -142,7 +160,11 @@ def risk_map(period: str = "all") -> str:
         for key in sorted(grids)
     )
     return (
-        "<html><head><meta charset='utf-8'><title>Карта риска</title></head><body>"
+        "<html><head><meta charset='utf-8'><title>Карта риска</title>"
+        "<style>body{font-family:Arial,Helvetica,sans-serif;margin:10px}"
+        "h1{font-size:18px;margin:0 0 8px 0}</style>"
+        "</head><body>"
+        "<h1>Карта риска дорожно-транспортных происшествий</h1>"
         "<form action='/map' method='get'>"
         f"<label>Период: <select name='period'>{options}</select></label> "
         "<button type='submit'>Показать</button></form>"
